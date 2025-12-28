@@ -50,8 +50,20 @@ while ((c = nextch()) != EOF) {
 }
 
 
-/* scan_ functions
-static int scan_c(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
+// scan_ helper functions
+
+// Read one character from input and store it in the variable the user passed in
+static int scan_c(const Spec *sp, va_list *ap) {
+    (void)sp;  // not used yet
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    char *out = va_arg(*ap, char*);
+    *out = (char)c;
+    return 1;
+}
+
 static int scan_s(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 static int scan_d(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 static int scan_x(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
@@ -119,10 +131,16 @@ return assigned;
 
 // quick manual test
 int main(void) {
-int a;
+//int a;
 //char s[64];
 //char ch;
-int n = my_scanf("%d", &a);  // %s %c", &a, s, &ch);
-printf("n=%d a=%d", n, a ); //s=%s ch=%c\n", n, a, s, ch);
+// int n = my_scanf("%d", &a);  // %s %c", &a, s, &ch);
+// printf("n=%d a=%d", n, a ); //s=%s ch=%c\n", n, a, s, ch);
+
+char ch;
+printf("Enter a character: ");
+my_scanf("%c", &ch);
+printf("ch=%c\n", ch);
+
 return 0;
 }
