@@ -137,7 +137,57 @@ static int scan_d(const Spec *sp, va_list *ap) {
     return 1;
 }
 
-static int scan_x(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
+
+static int hex_value(int c) {
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('a' <= c && c <= 'f') return 10 + (c - 'a');
+    if ('A' <= c && c <= 'F') return 10 + (c - 'A');
+    return -1;
+}
+
+static int scan_x(const Spec *sp, va_list *ap) {
+    (void)sp; // modifiers not used yet
+
+    // %x skips leading whitespace
+    skip_input_ws();
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    // Optional 0x / 0X prefix
+    if (c == '0') {
+        int c2 = nextch();
+        if (c2 == 'x' || c2 == 'X') {
+            c = nextch(); // move to first hex digit after prefix
+            if (c == EOF) return 0;
+        } else {
+            // not actually a prefix; put it back and keep c = '0'
+            unreadch(c2);
+        }
+    }
+
+    // Must have at least one hex digit
+    int hv = hex_value(c);
+    if (hv < 0) {
+        unreadch(c);
+        return 0;
+    }
+
+    unsigned long value = 0;
+
+    while (c != EOF && (hv = hex_value(c)) >= 0) {
+        value = value * 16 + (unsigned long)hv;
+        c = nextch();
+    }
+
+    if (c != EOF) unreadch(c);
+
+    int *out = va_arg(*ap, int*);
+    *out = (int)value;  // may overflow for huge hex inputs; okay for basic version
+
+    return 1;
+}
+
 static int scan_f(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 
 /* -----------------------------
@@ -220,11 +270,17 @@ int main(void) {
 // int n = my_scanf("%s", word);
 // printf("n=%d word=\"%s\"\n", n, word);
 
-// tests integer
-int num;      
-printf("Enter an integer: ");
-int n = my_scanf("%d", &num);
-printf("n=%d num=%d\n", n, num);
-return 0;
+// // tests integer
+// int num;      
+// printf("Enter an integer: ");
+// int n = my_scanf("%d", &num);
+// printf("n=%d num=%d\n", n, num);
+// return 0;
+
+    int x;
+    printf("Enter a hex number: ");
+    int n = my_scanf("%x", &x);
+    printf("n=%d x=%d (decimal)\n", n, x);
+    return 0;
 
 }
