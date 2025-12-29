@@ -64,7 +64,39 @@ static int scan_c(const Spec *sp, va_list *ap) {
     return 1;
 }
 
-static int scan_s(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
+
+static int scan_s(const Spec *sp, va_list *ap) {
+    (void)sp; // not using modifiers yet
+
+    // %s skips leading whitespace
+    skip_input_ws();
+
+    char *out = va_arg(*ap, char*);
+    int i = 0;
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    // If the next character is whitespace (or EOF), %s fails
+    if (isspace((unsigned char)c)) {
+        unreadch(c);
+        return 0;
+    }
+
+    // Read until whitespace or EOF
+    while (c != EOF && !isspace((unsigned char)c)) {
+        out[i++] = (char)c;
+        c = nextch();
+    }
+
+    // Put back the delimiter (whitespace) so the next conversion can see it
+    if (c != EOF) unreadch(c);
+
+    out[i] = '\0';
+    return 1;
+}
+
+
 static int scan_d(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 static int scan_x(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 static int scan_f(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
@@ -137,10 +169,18 @@ int main(void) {
 // int n = my_scanf("%d", &a);  // %s %c", &a, s, &ch);
 // printf("n=%d a=%d", n, a ); //s=%s ch=%c\n", n, a, s, ch);
 
+// tests char 
 char ch;
 printf("Enter a character: ");
 my_scanf("%c", &ch);
 printf("ch=%c\n", ch);
 
+// tests string
+char word[100];
+printf("Enter a word: ");
+int n = my_scanf("%s", word);
+printf("n=%d word=\"%s\"\n", n, word);
+
 return 0;
+
 }
