@@ -97,7 +97,46 @@ static int scan_s(const Spec *sp, va_list *ap) {
 }
 
 
-static int scan_d(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
+static int scan_d(const Spec *sp, va_list *ap) {
+    (void)sp; // modifiers not used yet
+
+    // %d skips leading whitespace
+    skip_input_ws();
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    int sign = 1;
+
+    // optional sign
+    if (c == '+' || c == '-') {
+        if (c == '-') sign = -1;
+        c = nextch();
+        if (c == EOF) return 0;
+    }
+
+    // must have at least one digit
+    if (!isdigit((unsigned char)c)) {
+        unreadch(c);
+        return 0;
+    }
+
+    long value = 0; // use long internally to reduce overflow risk while building
+
+    while (c != EOF && isdigit((unsigned char)c)) {
+        value = value * 10 + (c - '0');
+        c = nextch();
+    }
+
+    // we've read one char too far (non-digit or EOF)
+    if (c != EOF) unreadch(c);
+
+    int *out = va_arg(*ap, int*);
+    *out = (int)(sign * value);
+
+    return 1;
+}
+
 static int scan_x(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 static int scan_f(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
 
@@ -163,24 +202,29 @@ return assigned;
 
 // quick manual test
 int main(void) {
-//int a;
-//char s[64];
-//char ch;
-// int n = my_scanf("%d", &a);  // %s %c", &a, s, &ch);
-// printf("n=%d a=%d", n, a ); //s=%s ch=%c\n", n, a, s, ch);
+// int a;
+// char s[64];
+// char ch;
+// int n = my_scanf("%d %s %c", &a, s, &ch);
+// printf("n=%d a=%d s=%s ch=%c\n", n, a, s, ch);
 
-// tests char 
-char ch;
-printf("Enter a character: ");
-my_scanf("%c", &ch);
-printf("ch=%c\n", ch);
+// // tests char 
+// char ch;
+// printf("Enter a character: ");
+// my_scanf("%c", &ch);
+// printf("ch=%c\n", ch);
 
-// tests string
-char word[100];
-printf("Enter a word: ");
-int n = my_scanf("%s", word);
-printf("n=%d word=\"%s\"\n", n, word);
+// // tests string
+// char word[100];
+// printf("Enter a word: ");
+// int n = my_scanf("%s", word);
+// printf("n=%d word=\"%s\"\n", n, word);
 
+// tests integer
+int num;      
+printf("Enter an integer: ");
+int n = my_scanf("%d", &num);
+printf("n=%d num=%d\n", n, num);
 return 0;
 
 }
