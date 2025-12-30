@@ -117,8 +117,6 @@ static int scan_c(const Spec *sp, va_list *ap) {
 
 
 static int scan_s(const Spec *sp, va_list *ap) {
-    (void)sp; // not using modifiers yet
-
     // %s skips leading whitespace
     skip_input_ws();
 
@@ -156,10 +154,11 @@ static int scan_s(const Spec *sp, va_list *ap) {
 
 
 static int scan_d(const Spec *sp, va_list *ap) {
-    (void)sp; // modifiers not used yet
-
     // %d skips leading whitespace
     skip_input_ws();
+
+    int limit = sp->width;   // 0 = no limit
+    int used = 0;
 
     int c = nextch();
     if (c == EOF) return 0;
@@ -182,12 +181,17 @@ static int scan_d(const Spec *sp, va_list *ap) {
     long value = 0; // use long internally to reduce overflow risk while building
 
     while (c != EOF && isdigit((unsigned char)c)) {
+        if (limit != 0 && used >= limit) {
+                unreadch(c);
+                break;
+            }
         value = value * 10 + (c - '0');
+        used++;
         c = nextch();
     }
 
     // we've read one char too far (non-digit or EOF)
-    if (c != EOF) unreadch(c);
+    if (c != EOF && !(limit != 0 && used >= limit)) unreadch(c);
 
     int *out = va_arg(*ap, int*);
     *out = (int)(sign * value);
@@ -342,7 +346,7 @@ int main(void) {
     // int n = my_scanf("%x", &x);
     // printf("n=%d x=%d (decimal)\n", n, x);
 
-    // test width modifier
+    // test width modifier with %s
     char str[10];
     printf("Enter a word (width 4 chars): ");
     int n = my_scanf("%4s", str);
