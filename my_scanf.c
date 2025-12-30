@@ -7,17 +7,68 @@
 Spec struct and parse_spec
 ----------------------------- */
 
+typedef enum {
+    LEN_NONE,
+    LEN_H,
+    LEN_L,
+    LEN_LL,
+    LEN_CAP_L
+} Length;
+
 typedef struct {
-char conv;   // just the conversion letter for now: 'd','s','c','x','f'
+    int width;      // 0 means “no width specified”
+    Length len;     // for later: h, l, ll, L
+    char conv;      // 'd','s','c','x','f'
+
 } Spec;
 
 static int parse_spec(const char **pp, Spec *out) {
-// placeholder: minimal parse just reads one char as the conversion
-if (**pp == '\0') return 0;
-out->conv = **pp;
-(*pp)++;
-return 1;
+// // placeholder: minimal parse just reads one char as the conversion
+// if (**pp == '\0') return 0;
+// out->conv = **pp;
+// (*pp)++;
+// return 1;
+// }
+
+// static int parse_spec(const char **pp, Spec *out) {
+    const char *p = *pp;
+
+    out->width = 0;
+    out->len = LEN_NONE;
+    out->conv = '\0';
+
+    // 1) width: one or more digits
+    while (*p && isdigit((unsigned char)*p)) {
+        out->width = out->width * 10 + (*p - '0');
+        p++;
+    }
+
+    // 2) length modifier (NOT DONE)
+    if (*p == 'h') {
+        out->len = LEN_H;
+        p++;
+    } else if (*p == 'l') {
+        p++;
+        if (*p == 'l') {
+            out->len = LEN_LL;
+            p++;
+        } else {
+            out->len = LEN_L;
+        }
+    } else if (*p == 'L') {
+        out->len = LEN_CAP_L;
+        p++;
+    }
+
+    // 3) conversion character must exist
+    if (*p == '\0') return 0;
+    out->conv = *p;
+    p++;
+
+    *pp = p;   // advance format pointer past the specifier
+    return 1;
 }
+
 
 /* -----------------------------
 helper functions
@@ -74,6 +125,7 @@ static int scan_s(const Spec *sp, va_list *ap) {
     char *out = va_arg(*ap, char*);
     int i = 0;
 
+    int limit = sp->width;   // 0 means “no limit”
     int c = nextch();
     if (c == EOF) return 0;
 
@@ -85,12 +137,18 @@ static int scan_s(const Spec *sp, va_list *ap) {
 
     // Read until whitespace or EOF
     while (c != EOF && !isspace((unsigned char)c)) {
-        out[i++] = (char)c;
+        if (limit == 0 || i < limit) {
+            out[i++] = (char)c;
+        } else {
+            // width reached: stop consuming the token
+            unreadch(c);
+            break;
+        }
         c = nextch();
     }
 
     // Put back the delimiter (whitespace) so the next conversion can see it
-    if (c != EOF) unreadch(c);
+    if (c != EOF && isspace((unsigned char)c)) unreadch(c);
 
     out[i] = '\0';
     return 1;
@@ -218,6 +276,8 @@ while (*p) {
         Spec sp;
         if (!parse_spec(&p, &sp)) break;
 
+        printf("DEBUG: conv=%c width=%d len=%d\n", sp.conv, sp.width, sp.len);
+
         int ok = 0;
         switch (sp.conv) {
             case 'c': ok = scan_c(&sp, &ap); break;
@@ -252,35 +312,41 @@ return assigned;
 
 // quick manual test
 int main(void) {
-// int a;
-// char s[64];
-// char ch;
-// int n = my_scanf("%d %s %c", &a, s, &ch);
-// printf("n=%d a=%d s=%s ch=%c\n", n, a, s, ch);
+    // int a;
+    // char s[64];
+    // char ch;
+    // int n = my_scanf("%d %s %c", &a, s, &ch);
+    // printf("n=%d a=%d s=%s ch=%c\n", n, a, s, ch);
 
-// // tests char 
-// char ch;
-// printf("Enter a character: ");
-// my_scanf("%c", &ch);
-// printf("ch=%c\n", ch);
+    // // tests char 
+    // char ch;
+    // printf("Enter a character: ");
+    // my_scanf("%c", &ch);
+    // printf("ch=%c\n", ch);
 
-// // tests string
-// char word[100];
-// printf("Enter a word: ");
-// int n = my_scanf("%s", word);
-// printf("n=%d word=\"%s\"\n", n, word);
+    // // tests string
+    // char word[100];
+    // printf("Enter a word: ");
+    // int n = my_scanf("%s", word);
+    // printf("n=%d word=\"%s\"\n", n, word);
 
-// // tests integer
-// int num;      
-// printf("Enter an integer: ");
-// int n = my_scanf("%d", &num);
-// printf("n=%d num=%d\n", n, num);
-// return 0;
+    // // tests integer
+    // int num;      
+    // printf("Enter an integer: ");
+    // int n = my_scanf("%d", &num);
+    // printf("n=%d num=%d\n", n, num);
 
-    int x;
-    printf("Enter a hex number: ");
-    int n = my_scanf("%x", &x);
-    printf("n=%d x=%d (decimal)\n", n, x);
+    // // tests hex
+    // int x;
+    // printf("Enter a hex number: ");
+    // int n = my_scanf("%x", &x);
+    // printf("n=%d x=%d (decimal)\n", n, x);
+
+    // test width modifier
+    char str[10];
+    printf("Enter a word (width 4 chars): ");
+    int n = my_scanf("%4s", str);
+    printf("n=%d str=\"%s\"\n", n, str);
+
     return 0;
-
 }
