@@ -105,14 +105,21 @@ while ((c = nextch()) != EOF) {
 
 // Read one character from input and store it in the variable the user passed in
 static int scan_c(const Spec *sp, va_list *ap) {
-    (void)sp;  // not used yet
-
-    int c = nextch();
-    if (c == EOF) return 0;
+    int n = (sp->width == 0) ? 1 : sp->width;
 
     char *out = va_arg(*ap, char*);
-    *out = (char)c;
+
+    for (int i = 0; i < n; i++) {
+        int c = nextch();
+        if (c == EOF) return 0;
+        out[i] = (char)c;
+    }
+
+    /* Custom extension: null-terminate %Nc buffers for convenience */
+    out[n] = '\0';
+
     return 1;
+    
 }
 
 
