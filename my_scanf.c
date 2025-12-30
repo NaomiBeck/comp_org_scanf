@@ -208,23 +208,32 @@ static int hex_value(int c) {
 }
 
 static int scan_x(const Spec *sp, va_list *ap) {
-    (void)sp; // modifiers not used yet
-
     // %x skips leading whitespace
     skip_input_ws();
+
+    int limit = sp->width;  // 0 = no limit
+    int used = 0;
 
     int c = nextch();
     if (c == EOF) return 0;
 
     // Optional 0x / 0X prefix
     if (c == '0') {
-        int c2 = nextch();
-        if (c2 == 'x' || c2 == 'X') {
-            c = nextch(); // move to first hex digit after prefix
-            if (c == EOF) return 0;
-        } else {
-            // not actually a prefix; put it back and keep c = '0'
-            unreadch(c2);
+        if (limit == 0 || used < limit) {
+            int c2 = nextch();
+            if (c2 == 'x' || c2 == 'X') {
+                used += 2;  // consumed '0' and 'x'
+                if (limit != 0 && used > limit) {
+                    // prefix exceeded width: treat as failure, push back
+                    unreadch(c2);
+                    unreadch(c);
+                    return 0;
+                }
+                c = nextch();
+                if (c == EOF) return 0;
+            } else {
+                unreadch(c2);
+            }
         }
     }
 
@@ -238,11 +247,16 @@ static int scan_x(const Spec *sp, va_list *ap) {
     unsigned long value = 0;
 
     while (c != EOF && (hv = hex_value(c)) >= 0) {
+        if (limit != 0 && used >= limit) {
+            unreadch(c);
+            break;
+        }
         value = value * 16 + (unsigned long)hv;
+        used++;
         c = nextch();
     }
 
-    if (c != EOF) unreadch(c);
+    if (c != EOF && hv < 0) unreadch(c);
 
     int *out = va_arg(*ap, int*);
     *out = (int)value;  // may overflow for huge hex inputs; okay for basic version
@@ -346,11 +360,17 @@ int main(void) {
     // int n = my_scanf("%x", &x);
     // printf("n=%d x=%d (decimal)\n", n, x);
 
-    // test width modifier with %s
-    char str[10];
-    printf("Enter a word (width 4 chars): ");
-    int n = my_scanf("%4s", str);
-    printf("n=%d str=\"%s\"\n", n, str);
+    // // test width modifier with %s
+    // char str[10];
+    // printf("Enter a word (width 4 chars): ");
+    // int n = my_scanf("%4s", str);
+    // printf("n=%d str=\"%s\"\n", n, str);
+
+    // test width modifier with %x
+    int x;
+    printf("Enter hex: ");
+    int n = my_scanf("%2x", &x);
+    printf("n=%d x=%d\n", n, x);
 
     return 0;
 }
