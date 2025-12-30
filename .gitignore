@@ -1,6 +1,9 @@
 .vscode/
-*.exe
 .idea/
+
 *.log
-build/.*
-scrap_paper.*
+*.exe
+*.o
+build/
+
+scrap_paper*

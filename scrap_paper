@@ -1,8 +1,0 @@
-static int parse_spec(const char **pp, Spec *out) {
-// // placeholder: minimal parse just reads one char as the conversion
-// if (**pp == '\0') return 0;
-// out->conv = **pp;
-// (*pp)++;
-// return 1;
-// }
-
