@@ -367,17 +367,17 @@ int main(void) {
     // int n = my_scanf("%x", &x);
     // printf("n=%d x=%d (decimal)\n", n, x);
 
-    // // test width modifier with %s
-    // char str[10];
-    // printf("Enter a word (width 4 chars): ");
-    // int n = my_scanf("%4s", str);
-    // printf("n=%d str=\"%s\"\n", n, str);
+    // test width modifier with %s
+    char str[10];
+    printf("Enter a word (width 4 chars): ");
+    int n = my_scanf("%4s", str);
+    printf("n=%d str=\"%s\"\n", n, str);
 
-    // test width modifier with %x
-    int x;
-    printf("Enter hex: ");
-    int n = my_scanf("%2x", &x);
-    printf("n=%d x=%d\n", n, x);
+    // // test width modifier with %x
+    // int x;
+    // printf("Enter hex: ");
+    // int n = my_scanf("%2x", &x);
+    // printf("n=%d x=%d\n", n, x);
 
     return 0;
 }
