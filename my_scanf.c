@@ -129,8 +129,8 @@ static int scan_s(const Spec *sp, va_list *ap) {
 
     char *out = va_arg(*ap, char*);
     int i = 0;
-
     int limit = sp->width;   // 0 means “no limit”
+
     int c = nextch();
     if (c == EOF) return 0;
 
@@ -142,15 +142,14 @@ static int scan_s(const Spec *sp, va_list *ap) {
 
     // Read until whitespace or EOF
     while (c != EOF && !isspace((unsigned char)c)) {
-        if (limit == 0 || i < limit) {
-            out[i++] = (char)c;
-        } else {
-            // width reached: stop consuming the token
+        if (limit != 0 && i >= limit) {
             unreadch(c);
             break;
         }
+        out[i++] = (char)c;
         c = nextch();
     }
+
 
     // Put back the delimiter (whitespace) so the next conversion can see it
     if (c != EOF && isspace((unsigned char)c)) unreadch(c);
@@ -200,8 +199,29 @@ static int scan_d(const Spec *sp, va_list *ap) {
     // we've read one char too far (non-digit or EOF)
     if (c != EOF && !(limit != 0 && used >= limit)) unreadch(c);
 
-    int *out = va_arg(*ap, int*);
-    *out = (int)(sign * value);
+    long signed_value = sign * value;
+
+    switch (sp->len) {
+        case LEN_NONE: {
+            int *out = va_arg(*ap, int*);
+            *out = (int)signed_value;
+            break;
+        }
+        case LEN_L: {
+            long *out = va_arg(*ap, long*);
+            *out = (long)signed_value;
+            break;
+        }
+        case LEN_LL: {
+            long long *out = va_arg(*ap, long long*);
+            *out = (long long)signed_value;
+            break;
+        }
+        default:
+            // unsupported length for %d
+            return 0;
+    }
+
 
     return 1;
 }
@@ -367,11 +387,11 @@ int main(void) {
     // int n = my_scanf("%x", &x);
     // printf("n=%d x=%d (decimal)\n", n, x);
 
-    // test width modifier with %s
-    char str[10];
-    printf("Enter a word (width 4 chars): ");
-    int n = my_scanf("%4s", str);
-    printf("n=%d str=\"%s\"\n", n, str);
+    // // test width modifier with %s
+    // char str[10];
+    // printf("Enter a word (width 4 chars): ");
+    // int n = my_scanf("%4s", str);
+    // printf("n=%d str=\"%s\"\n", n, str);
 
     // // test width modifier with %x
     // int x;
@@ -379,5 +399,14 @@ int main(void) {
     // int n = my_scanf("%2x", &x);
     // printf("n=%d x=%d\n", n, x);
 
+    // %d with length modifiers
+    int a;
+    long b;
+    long long c;
+
+    printf("Enter three integers (int, long, long long): ");
+    my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
+    printf("a=%d b=%ld c=%lld\n", a, b, c);
+    
     return 0;
 }
