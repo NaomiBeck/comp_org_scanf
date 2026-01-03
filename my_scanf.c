@@ -285,9 +285,26 @@ static int scan_x(const Spec *sp, va_list *ap) {
 
     if (c != EOF && hv < 0) unreadch(c);
 
-    int *out = va_arg(*ap, int*);
-    *out = (int)value;  // may overflow for huge hex inputs; okay for basic version
-
+    switch (sp->len) {
+        case LEN_NONE: {
+            unsigned int *out = va_arg(*ap, unsigned int*);
+            *out = (unsigned int)value;
+            break;
+        }
+        case LEN_L: {
+            unsigned long *out = va_arg(*ap, unsigned long*);
+            *out = (unsigned long)value;
+            break;
+        }
+        case LEN_LL: {
+            unsigned long long *out = va_arg(*ap, unsigned long long*);
+            *out = (unsigned long long)value;
+            break;
+        }
+        default:
+            return 0;
+    }
+    
     return 1;
 }
 
@@ -407,6 +424,6 @@ int main(void) {
     printf("Enter three integers (int, long, long long): ");
     my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
     printf("a=%d b=%ld c=%lld\n", a, b, c);
-    
+
     return 0;
 }
