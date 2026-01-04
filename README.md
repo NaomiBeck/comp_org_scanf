@@ -6,7 +6,7 @@
 This project implements `my_scanf`, a custom version of the C `scanf` function.  
 The implementation manually parses format strings, handles width and length modifiers, processes variadic arguments, and reads input using a custom buffering mechanism.
 
-The program supports all required conversion specifiers and modifiers for the assignment and includes **three custom extensions**.
+The program supports all required conversion specifiers and modifiers for the assignment and includes three custom extensions.
 
 ---
 
