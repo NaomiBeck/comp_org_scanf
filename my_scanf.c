@@ -302,7 +302,124 @@ static int scan_x(const Spec *sp, va_list *ap) {
     return 1;
 }
 
-static int scan_f(const Spec *sp, va_list *ap) { (void)sp; (void)ap; return 0; }
+static long double pow10_ld(int exp) {
+    long double p = 1.0L;
+    if (exp >= 0) {
+        for (int i = 0; i < exp; i++) p *= 10.0L;
+    } else {
+        for (int i = 0; i < -exp; i++) p /= 10.0L;
+    }
+    return p;
+}
+
+static int scan_f(const Spec *sp, va_list *ap) {
+    skip_input_ws();
+
+    int limit = sp->width;   // 0 = no limit
+    int used = 0;
+
+    #define READC() ((limit!=0 && used>=limit) ? EOF : (used++, nextch()))
+    #define UNRDC(ch) do { if ((ch)!=EOF) { unreadch(ch); used--; } } while(0)
+
+    int c = READC();
+    if (c == EOF) return 0;
+
+    int sign = 1;
+    if (c == '+' || c == '-') {
+        if (c == '-') sign = -1;
+        c = READC();
+        if (c == EOF) return 0;
+    }
+
+    int saw_digit = 0;
+    long double val = 0.0L;
+
+    while (c != EOF && isdigit((unsigned char)c)) {
+        saw_digit = 1;
+        val = val * 10.0L + (long double)(c - '0');
+        c = READC();
+    }
+
+    if (c == '.') {
+        long double place = 0.1L;
+        c = READC();
+        while (c != EOF && isdigit((unsigned char)c)) {
+            saw_digit = 1;
+            val += (long double)(c - '0') * place;
+            place *= 0.1L;
+            c = READC();
+        }
+    }
+
+    if (!saw_digit) {
+        UNRDC(c);
+        return 0;
+    }
+
+    if (c == 'e' || c == 'E') {
+        int e_char = c;
+        int exp_sign = 1;
+        int exp_val = 0;
+
+        int c2 = READC();
+        if (c2 == '+' || c2 == '-') {
+            if (c2 == '-') exp_sign = -1;
+            int c3 = READC();
+            if (c3 == EOF || !isdigit((unsigned char)c3)) {
+                UNRDC(c3);
+                UNRDC(c2);
+                UNRDC(e_char);
+            } else {
+                exp_val = c3 - '0';
+                int cx = READC();
+                while (cx != EOF && isdigit((unsigned char)cx)) {
+                    exp_val = exp_val * 10 + (cx - '0');
+                    cx = READC();
+                }
+                UNRDC(cx);
+                val *= pow10_ld(exp_sign * exp_val);
+                c = READC();
+            }
+        } else if (c2 == EOF || !isdigit((unsigned char)c2)) {
+            UNRDC(c2);
+            UNRDC(e_char);
+        } else {
+            exp_val = c2 - '0';
+            int cx = READC();
+            while (cx != EOF && isdigit((unsigned char)cx)) {
+                exp_val = exp_val * 10 + (cx - '0');
+                cx = READC();
+            }
+            UNRDC(cx);
+            val *= pow10_ld(exp_sign * exp_val);
+            c = READC();
+        }
+    }
+
+    UNRDC(c);
+
+   val *= (long double)sign;
+
+    if (sp->len == LEN_NONE) {          // %f
+        float *out = va_arg(*ap, float*);
+        *out = (float)val;
+    } else if (sp->len == LEN_L) {      // %lf
+        double *out = va_arg(*ap, double*);
+        *out = (double)val;
+    } else if (sp->len == LEN_CAP_L) {  // %Lf
+        long double *out = va_arg(*ap, long double*);
+        *out = (long double)val;
+    } else {
+        return 0; // (h / ll not supported for %f)
+    }
+    return 1;
+
+
+    #undef READC
+    #undef UNRDC
+    return 1;
+}
+
 
 /* -----------------------------
 my_scanf: dispatcher
@@ -410,14 +527,36 @@ int main(void) {
     // int n = my_scanf("%2x", &x);
     // printf("n=%d x=%d\n", n, x);
 
-    // %d with length modifiers
-    int a;
-    long b;
-    long long c;
+    // // %d with length modifiers
+    // int a;
+    // long b;
+    // long long c;
 
-    printf("Enter three integers (int, long, long long): ");
-    my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
-    printf("a=%d b=%ld c=%lld\n", a, b, c);
+    // printf("Enter three integers (int, long, long long): ");
+    // my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
+    // printf("a=%d b=%ld c=%lld\n", a, b, c);
+
+
+    // // %f with length modifiers
+    // float a;
+    // double b;
+    // long double c;
+
+    // printf("Enter three numbers (float double longdouble): ");  
+    // int n = my_scanf("%f %lf %Lf", &a, &b, &c); // 1.25 3e2 -0.0045
+
+    // printf("n=%d\n", n);
+    // printf("a=%f\n", a);
+    // printf("b=%lf\n", b);
+    // printf("c=%Lf\n", c);
+
+    // test %Lf
+    long double c = 123.0L;
+    printf("Enter a long double: ");
+    int n = my_scanf("%Lf", &c);
+    printf("n=%d c=%.12Lf\n", n, c);
+
 
     return 0;
 }
+
