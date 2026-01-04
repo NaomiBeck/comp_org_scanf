@@ -32,3 +32,26 @@ The program supports all required conversion specifiers and modifiers for the as
 - `%b` — reads a binary number and converts it to an integer  
 - `%r` — reads the rest of the current line (until newline)
 
+---
+
+## Example Test Case
+
+The following test demonstrates all three custom extensions used together.
+
+**Code**
+```c
+char q[64], r[128];
+unsigned int b;
+
+int n = my_scanf("%q %b %r", q, &b, r);
+printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
+```
+
+Input (stdin):
+"quoted text" 1011 rest of line here
+
+Output (stdout):
+n=3
+q=[quoted text]
+b=11
+r=[rest of line here]
