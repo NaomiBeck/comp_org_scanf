@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>  // for variadic fucntions: va_list, va_start
 #include <ctype.h>  // for isspace()...
+#include "my_scanf.h"
 
 /* -----------------------------
 Spec struct and parse_spec
@@ -312,7 +313,8 @@ static long double pow10_ld(int exp) {
     return p;
 }
 
-static int scan_f(const Spec *sp, va_list *ap) {
+//static int scan_f(const Spec *sp, va_list *ap) {
+static int scan_f(const Spec *sp, void *outp) {
     skip_input_ws();
 
     int limit = sp->width;   // 0 = no limit
@@ -400,21 +402,33 @@ static int scan_f(const Spec *sp, va_list *ap) {
 
    val *= (long double)sign;
 
+    // if (sp->len == LEN_NONE) {          // %f
+    //     float *out = va_arg(*ap, float*);
+    //     *out = (float)val;
+    // } else if (sp->len == LEN_L) {      // %lf
+    //     double *out = va_arg(*ap, double*);
+    //     *out = (double)val;
+    // } else if (sp->len == LEN_CAP_L) {  // %Lf
+    //     long double *out = va_arg(*ap, long double*);
+    //     *out = (long double)val;
+    // } else {
+    //     #undef READC
+    //     #undef UNRDC
+    //     return 0; // (h / ll not supported for %f)
+    // }
+
     if (sp->len == LEN_NONE) {          // %f
-        float *out = va_arg(*ap, float*);
-        *out = (float)val;
+        *(float*)outp = (float)val;
     } else if (sp->len == LEN_L) {      // %lf
-        double *out = va_arg(*ap, double*);
-        *out = (double)val;
+        *(double*)outp = (double)val;
     } else if (sp->len == LEN_CAP_L) {  // %Lf
-        long double *out = va_arg(*ap, long double*);
-        *out = (long double)val;
+        *(long double*)outp = (long double)val;
     } else {
-        return 0; // (h / ll not supported for %f)
+        #undef READC
+        #undef UNRDC
+        return 0;
     }
-    return 1;
-
-
+    
     #undef READC
     #undef UNRDC
     return 1;
@@ -457,7 +471,16 @@ while (*p) {
             case 's': ok = scan_s(&sp, &ap); break;
             case 'd': ok = scan_d(&sp, &ap); break;
             case 'x': ok = scan_x(&sp, &ap); break;
-            case 'f': ok = scan_f(&sp, &ap); break;
+            //case 'f': ok = scan_f(&sp, &ap); break;
+            case 'f': {
+                void *dst;
+                if (sp.len == LEN_NONE) dst = va_arg(ap, float*);
+                else if (sp.len == LEN_L) dst = va_arg(ap, double*);
+                else if (sp.len == LEN_CAP_L) dst = va_arg(ap, long double*);
+                else { ok = 0; break; }
+                ok = scan_f(&sp, dst);
+                break;
+            }
             default:  ok = 0; break;
         }
 
@@ -548,14 +571,14 @@ int main(void) {
     // printf("n=%d\n", n);
     // printf("a=%f\n", a);
     // printf("b=%lf\n", b);
-    // printf("c=%Lf\n", c);
+    // printf("c=%Lf\n", c);-0
 
     // test %Lf
     long double c = 123.0L;
     printf("Enter a long double: ");
     int n = my_scanf("%Lf", &c);
+    printf("sizeof(long double)=%zu\n", sizeof(long double));
     printf("n=%d c=%.12Lf\n", n, c);
-
 
     return 0;
 }
