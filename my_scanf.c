@@ -477,6 +477,62 @@ static int scan_q(const Spec *sp, va_list *ap) {
     return 0; // EOF before closing quote
 }
 
+static int scan_b(const Spec *sp, va_list *ap) {
+    skip_input_ws();
+
+    int limit = sp->width;
+    int used = 0;
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    if (c != '0' && c != '1') { unreadch(c); return 0; }
+
+    unsigned long long value = 0;
+
+    while (c != EOF && (c == '0' || c == '1')) {
+        if (limit != 0 && used >= limit) { unreadch(c); break; }
+        value = value * 2ULL + (unsigned long long)(c - '0');
+        used++;
+        c = nextch();
+    }
+
+    if (c != EOF && !(c == '0' || c == '1')) unreadch(c);
+
+    // store like %x using len
+    if (sp->len == LEN_NONE) {
+        unsigned int *out = va_arg(*ap, unsigned int*);
+        *out = (unsigned int)value;
+    } else if (sp->len == LEN_L) {
+        unsigned long *out = va_arg(*ap, unsigned long*);
+        *out = (unsigned long)value;
+    } else if (sp->len == LEN_LL) {
+        unsigned long long *out = va_arg(*ap, unsigned long long*);
+        *out = (unsigned long long)value;
+    } else {
+        return 0;
+    }
+    return 1;
+}
+
+
+static int scan_r(const Spec *sp, va_list *ap) {
+    char *out = va_arg(*ap, char*);
+    int limit = sp->width;
+    int i = 0;
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    while (c != EOF && c != '\n') {
+        if (limit == 0 || i < limit) out[i++] = (char)c;
+        c = nextch();
+    }
+
+    out[i] = '\0';
+    return 1;
+}
+
 
 
 
@@ -529,6 +585,9 @@ while (*p) {
                 break;
             }
             case 'q': ok = scan_q(&sp, &ap); break;
+            case 'b': ok = scan_b(&sp, &ap); break;
+            case 'r': ok = scan_r(&sp, &ap); break;
+
 
             default:  ok = 0; break;
         }
@@ -555,7 +614,7 @@ return assigned;
 }
 
 
-// quick manual test
+// quick manual tests
 int main(void) {
     // int a;
     // char s[64];
@@ -629,10 +688,20 @@ int main(void) {
     // printf("sizeof(long double)=%zu\n", sizeof(long double));
     // printf("n=%d c=%.12Lf\n", n, c);
 
-    char s[64];
-    printf("Enter quoted text: ");
-    int n = my_scanf("%q", s);
-    printf("n=%d s=[%s]\n", n, s);
+    // // test %q
+    // char s[64];
+    // printf("Enter quoted text: ");
+    // int n = my_scanf("%q", s);
+    // printf("n=%d s=[%s]\n", n, s);
+
+    // test %q, %b, %r
+    char q[64], r[128];
+    unsigned int b;
+
+    printf("Enter: \"quoted text\" 1011 rest of line here\n");
+    int n = my_scanf("%q %b %r", q, &b, r);
+
+    printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
     
 
     return 0;
