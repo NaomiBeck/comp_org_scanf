@@ -17,19 +17,12 @@ typedef enum {
 
 typedef struct {
     int width;      // 0 means “no width specified”
-    Length len;     // for later: h, l, ll, L
+    Length len;     // h, l, ll, L
     char conv;      // 'd','s','c','x','f'
 
 } Spec;
 
 static int parse_spec(const char **pp, Spec *out) {
-// // placeholder: minimal parse just reads one char as the conversion
-// if (**pp == '\0') return 0;
-// out->conv = **pp;
-// (*pp)++;
-// return 1;
-// }
-
 // static int parse_spec(const char **pp, Spec *out) {
     const char *p = *pp;
 
@@ -73,21 +66,22 @@ static int parse_spec(const char **pp, Spec *out) {
 /* -----------------------------
 helper functions
 ----------------------------- */
-static int has_buf = 0;
-static int buf_ch = 0;
+#define UNREAD_MAX 16
+static int ubuf[UNREAD_MAX];
+static int ubuf_len = 0;
 
 static int nextch(void) {
-if (has_buf) {
-    has_buf = 0;
-    return buf_ch;
-}
-return getchar(); 
+    if (ubuf_len > 0) {
+        return ubuf[--ubuf_len];
+    }
+    return getchar();
 }
 
 static void unreadch(int c) {
-if (c == EOF) return;
-has_buf = 1;
-buf_ch = c;
+    if (c == EOF) return;
+    if (ubuf_len < UNREAD_MAX) {
+        ubuf[ubuf_len++] = c;
+    }
 }
 
 static void skip_input_ws(void) {
@@ -304,7 +298,7 @@ static int scan_x(const Spec *sp, va_list *ap) {
         default:
             return 0;
     }
-    
+
     return 1;
 }
 
