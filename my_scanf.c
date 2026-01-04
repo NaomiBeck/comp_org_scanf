@@ -434,6 +434,53 @@ static int scan_f(const Spec *sp, void *outp) {
     return 1;
 }
 
+/* custom extionsions */
+static int scan_q(const Spec *sp, va_list *ap) {
+    char *out = va_arg(*ap, char*);
+    skip_input_ws();
+
+    int limit = sp->width;   // 0 = unlimited
+    int i = 0;
+
+    int c = nextch();
+    if (c == EOF) return 0;
+
+    if (c != '"') {
+        // fallback: behave like %s (read until whitespace)
+        unreadch(c);
+        c = nextch();
+        if (c == EOF) return 0;
+        if (isspace((unsigned char)c)) { unreadch(c); return 0; }
+
+        while (c != EOF && !isspace((unsigned char)c)) {
+            if (limit == 0 || i < limit) out[i++] = (char)c;
+            else { unreadch(c); break; }
+            c = nextch();
+        }
+        if (c != EOF && isspace((unsigned char)c)) unreadch(c);
+
+        out[i] = '\0';
+        return 1;
+    }
+
+    // quoted: read until closing quote
+    while ((c = nextch()) != EOF) {
+        if (c == '"') {
+            out[i] = '\0';
+            return 1;
+        }
+        if (limit == 0 || i < limit) out[i++] = (char)c;
+        // else: width reached; keep consuming until quote but don't store
+    }
+
+    out[i] = '\0';
+    return 0; // EOF before closing quote
+}
+
+
+
+
+
 
 /* -----------------------------
 my_scanf: dispatcher
@@ -481,6 +528,8 @@ while (*p) {
                 ok = scan_f(&sp, dst);
                 break;
             }
+            case 'q': ok = scan_q(&sp, &ap); break;
+
             default:  ok = 0; break;
         }
 
@@ -573,12 +622,18 @@ int main(void) {
     // printf("b=%lf\n", b);
     // printf("c=%Lf\n", c);-0
 
-    // test %Lf
-    long double c = 123.0L;
-    printf("Enter a long double: ");
-    int n = my_scanf("%Lf", &c);
-    printf("sizeof(long double)=%zu\n", sizeof(long double));
-    printf("n=%d c=%.12Lf\n", n, c);
+    // // test %Lf
+    // long double c = 123.0L;
+    // printf("Enter a long double: ");
+    // int n = my_scanf("%Lf", &c);
+    // printf("sizeof(long double)=%zu\n", sizeof(long double));
+    // printf("n=%d c=%.12Lf\n", n, c);
+
+    char s[64];
+    printf("Enter quoted text: ");
+    int n = my_scanf("%q", s);
+    printf("n=%d s=[%s]\n", n, s);
+    
 
     return 0;
 }
