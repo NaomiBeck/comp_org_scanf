@@ -10,6 +10,7 @@ Spec struct and parse_spec
 
 typedef enum {
     LEN_NONE,
+    LEN_HH,
     LEN_H,
     LEN_L,
     LEN_LL,
@@ -47,8 +48,9 @@ static int parse_spec(const char **pp, Spec *out) {
 
     // 2) length modifier 
     if (*p == 'h') {
-        out->len = LEN_H;
         p++;
+        if (*p == 'h') { out->len = LEN_HH; p++; }  
+        else { out->len = LEN_H; }
     } else if (*p == 'l') {
         p++;
         if (*p == 'l') {
@@ -61,7 +63,6 @@ static int parse_spec(const char **pp, Spec *out) {
         out->len = LEN_CAP_L;
         p++;
     }
-
 
     // 3) conversion character must exist
     if (*p == '\0') return 0;
