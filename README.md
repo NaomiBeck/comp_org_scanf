@@ -23,10 +23,12 @@ The program supports all required conversion specifiers and modifiers for the as
 - **Width modifiers** (e.g. `%4s`, `%3c`, `%2x`)
 - **Length modifiers**: `h`, `l`, `ll`, `L`  
   - Examples: `%d`, `%ld`, `%lld`, `%f`, `%lf`, `%Lf`
+- **Assignment suppression** via `*` (e.g. `%*d` skips an integer without assigning it)
+
 
 ---
 
-## Custom Extensions (3)
+## Custom Extensions 
 
 - `%q` — reads quoted text (`"hello world"` → `hello world`)  
 - `%b` — reads a binary number and converts it to an integer  

@@ -20,6 +20,7 @@ typedef struct {
     int width;      // 0 means “no width specified”
     Length len;     // h, l, ll, L
     char conv;      // 'd','s','c','x','f'
+    int suppress;   // 0 = normal, 1 = assignment suppression via '*'
 
 } Spec;
 
@@ -30,6 +31,13 @@ static int parse_spec(const char **pp, Spec *out) {
     out->width = 0;
     out->len = LEN_NONE;
     out->conv = '\0';
+    out->suppress = 0;
+
+    // 0) assignment suppression
+    if (*p == '*') {
+        out->suppress = 1;
+        p++;
+    }
 
     // 1) width: one or more digits
     while (*p && isdigit((unsigned char)*p)) {
@@ -37,7 +45,7 @@ static int parse_spec(const char **pp, Spec *out) {
         p++;
     }
 
-    // 2) length modifier (NOT DONE)
+    // 2) length modifier 
     if (*p == 'h') {
         out->len = LEN_H;
         p++;
@@ -53,6 +61,7 @@ static int parse_spec(const char **pp, Spec *out) {
         out->len = LEN_CAP_L;
         p++;
     }
+
 
     // 3) conversion character must exist
     if (*p == '\0') return 0;
@@ -102,17 +111,16 @@ while ((c = nextch()) != EOF) {
 static int scan_c(const Spec *sp, va_list *ap) {
     int n = (sp->width == 0) ? 1 : sp->width;
 
-    char *out = va_arg(*ap, char*);
+    char *out = NULL;
+    if (!sp->suppress) out = va_arg(*ap, char*);
 
     for (int i = 0; i < n; i++) {
         int c = nextch();
         if (c == EOF) return 0;
-        out[i] = (char)c;
+        if (!sp->suppress) out[i] = (char)c;
     }
 
-    /* Custom extension: null-terminate %Nc buffers for convenience */
-    out[n] = '\0';
-
+    // Standard scanf("%Nc") does NOT null-terminate.
     return 1;
     
 }
@@ -122,7 +130,10 @@ static int scan_s(const Spec *sp, va_list *ap) {
     // %s skips leading whitespace
     skip_input_ws();
 
-    char *out = va_arg(*ap, char*);
+    char *out = NULL;
+    if (!sp->suppress)
+        out = va_arg(*ap, char*);
+
     int i = 0;
     int limit = sp->width;   // 0 means “no limit”
 
@@ -137,19 +148,27 @@ static int scan_s(const Spec *sp, va_list *ap) {
 
     // Read until whitespace or EOF
     while (c != EOF && !isspace((unsigned char)c)) {
-        if (limit != 0 && i >= limit) {
+        // store only if not suppressed, and only up to width
+        if (limit == 0 || i < limit) {
+            if (!sp->suppress) out[i] = (char)c;
+            i++;
+        } else {
+            // width reached: stop scanning token and leave this char for next read
             unreadch(c);
             break;
         }
-        out[i++] = (char)c;
         c = nextch();
     }
 
-
-    // Put back the delimiter (whitespace) so the next conversion can see it
+    // if we stopped because of whitespace, put it back for the next conversion
     if (c != EOF && isspace((unsigned char)c)) unreadch(c);
 
-    out[i] = '\0';
+    if (!sp->suppress) {
+        // null-terminate; caller must provide at least (min(tokenlen,width)+1) space
+        int term = (limit == 0) ? i : (i < limit ? i : limit);
+        out[term] = '\0';
+    }
+
     return 1;
 }
 
@@ -194,6 +213,10 @@ static int scan_d(const Spec *sp, va_list *ap) {
     // we've read one char too far (non-digit or EOF)
     if (c != EOF && !(limit != 0 && used >= limit)) unreadch(c);
 
+    if (sp->suppress) {
+    return 1;   // input was valid and consumed
+    }
+
     long signed_value = sign * value;
 
     switch (sp->len) {
@@ -216,7 +239,6 @@ static int scan_d(const Spec *sp, va_list *ap) {
             // unsupported length for %d
             return 0;
     }
-
 
     return 1;
 }
@@ -279,6 +301,10 @@ static int scan_x(const Spec *sp, va_list *ap) {
     }
 
     if (c != EOF && hv < 0) unreadch(c);
+
+    if (sp->suppress) {
+        return 1;   // input was valid and consumed
+    }
 
     switch (sp->len) {
         case LEN_NONE: {
@@ -400,7 +426,12 @@ static int scan_f(const Spec *sp, void *outp) {
 
     UNRDC(c);
 
-   val *= (long double)sign;
+
+    if (sp->suppress) {
+        return 1;   
+    }
+
+    val *= (long double)sign;
 
     // if (sp->len == LEN_NONE) {          // %f
     //     float *out = va_arg(*ap, float*);
@@ -436,7 +467,9 @@ static int scan_f(const Spec *sp, void *outp) {
 
 /* custom extionsions */
 static int scan_q(const Spec *sp, va_list *ap) {
-    char *out = va_arg(*ap, char*);
+    char *out = NULL;
+    if (!sp->suppress) out = va_arg(*ap, char*);
+
     skip_input_ws();
 
     int limit = sp->width;   // 0 = unlimited
@@ -447,34 +480,54 @@ static int scan_q(const Spec *sp, va_list *ap) {
 
     if (c != '"') {
         // fallback: behave like %s (read until whitespace)
-        unreadch(c);
-        c = nextch();
-        if (c == EOF) return 0;
-        if (isspace((unsigned char)c)) { unreadch(c); return 0; }
+        if (!isspace((unsigned char)c)) {
+            while (c != EOF && !isspace((unsigned char)c)) {
+                if (limit == 0 || i < limit) {
+                    if (!sp->suppress) out[i] = (char)c;
+                    i++;
+                } else {
+                    unreadch(c);
+                    break;
+                }
+                c = nextch();
+            }
+            if (c != EOF && isspace((unsigned char)c)) unreadch(c);
 
-        while (c != EOF && !isspace((unsigned char)c)) {
-            if (limit == 0 || i < limit) out[i++] = (char)c;
-            else { unreadch(c); break; }
-            c = nextch();
+            if (!sp->suppress) {
+                int term = (limit == 0) ? i : (i < limit ? i : limit);
+                out[term] = '\0';
+            }
+            return 1;
+        } else {
+            unreadch(c);
+            return 0;
         }
-        if (c != EOF && isspace((unsigned char)c)) unreadch(c);
-
-        out[i] = '\0';
-        return 1;
     }
 
-    // quoted: read until closing quote
+    // inside quotes: read until closing quote
     while ((c = nextch()) != EOF) {
         if (c == '"') {
-            out[i] = '\0';
+            if (!sp->suppress) {
+                int term = (limit == 0) ? i : (i < limit ? i : limit);
+                out[term] = '\0';
+            }
             return 1;
         }
-        if (limit == 0 || i < limit) out[i++] = (char)c;
-        // else: width reached; keep consuming until quote but don't store
+
+        if (limit == 0 || i < limit) {
+            if (!sp->suppress) out[i] = (char)c;
+            i++;
+        } else {
+            // width reached: keep consuming until closing quote, don't store
+        }
     }
 
-    out[i] = '\0';
-    return 0; // EOF before closing quote
+    // EOF before closing quote
+    if (!sp->suppress) {
+        int term = (limit == 0) ? i : (i < limit ? i : limit);
+        out[term] = '\0';
+    }
+    return 0;
 }
 
 static int scan_b(const Spec *sp, va_list *ap) {
@@ -499,6 +552,10 @@ static int scan_b(const Spec *sp, va_list *ap) {
 
     if (c != EOF && !(c == '0' || c == '1')) unreadch(c);
 
+    if (sp->suppress) {
+        return 1;   // input was valid and consumed
+    }
+
     // store like %x using len
     if (sp->len == LEN_NONE) {
         unsigned int *out = va_arg(*ap, unsigned int*);
@@ -517,7 +574,9 @@ static int scan_b(const Spec *sp, va_list *ap) {
 
 
 static int scan_r(const Spec *sp, va_list *ap) {
-    char *out = va_arg(*ap, char*);
+    char *out = NULL;
+    if (!sp->suppress) out = va_arg(*ap, char*);
+
     int limit = sp->width;
     int i = 0;
 
@@ -525,11 +584,18 @@ static int scan_r(const Spec *sp, va_list *ap) {
     if (c == EOF) return 0;
 
     while (c != EOF && c != '\n') {
-        if (limit == 0 || i < limit) out[i++] = (char)c;
+        if (limit == 0 || i < limit) {
+            if (!sp->suppress) out[i] = (char)c;
+            i++;
+        }
         c = nextch();
     }
 
-    out[i] = '\0';
+    if (!sp->suppress) {
+        int term = (limit == 0) ? i : (i < limit ? i : limit);
+        out[term] = '\0';
+    }
+
     return 1;
 }
 
@@ -566,8 +632,6 @@ while (*p) {
         Spec sp;
         if (!parse_spec(&p, &sp)) break;
 
-        printf("DEBUG: conv=%c width=%d len=%d\n", sp.conv, sp.width, sp.len);
-
         int ok = 0;
         switch (sp.conv) {
             case 'c': ok = scan_c(&sp, &ap); break;
@@ -593,7 +657,7 @@ while (*p) {
         }
 
         if (!ok) break;
-        assigned++;
+        if (!sp.suppress) assigned++;
 
     } else if (isspace((unsigned char)*p)) {
         while (*p && isspace((unsigned char)*p)) p++;
@@ -694,15 +758,31 @@ int main(void) {
     // int n = my_scanf("%q", s);
     // printf("n=%d s=[%s]\n", n, s);
 
-    // test %q, %b, %r
-    char q[64], r[128];
-    unsigned int b;
+    // // test %q, %b, %r
+    // char q[64], r[128];
+    // unsigned int b;
+    // printf("Enter: \"quoted text\" 1011 rest of line here\n");
+    // int n = my_scanf("%q %b %r", q, &b, r);
+    // printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
 
-    printf("Enter: \"quoted text\" 1011 rest of line here\n");
-    int n = my_scanf("%q %b %r", q, &b, r);
-
-    printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
+    // // test %*d (suppression)
+    // int x;
+    // printf("Enter: 111 222\n");
+    // int n = my_scanf("%*d %d", &x);
+    // printf("n=%d x=%d\n", n, x);  // expect n=1 x=222
     
+    // // test %*s (suppression)
+    // char s2[64];
+    // printf("Enter: skip keep\n");
+    // int n = my_scanf("%*s %s", s2);
+    // printf("n=%d s2=[%s]\n", n, s2);
+
+    // test %*r (suppression)
+    char line[64];
+    int n = my_scanf("%*r%r", line);
+    printf("n=%d line=[%s]\n", n, line);
+
+
 
     return 0;
 }
