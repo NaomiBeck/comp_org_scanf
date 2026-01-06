@@ -670,114 +670,306 @@ return assigned;
 }
 
 
-// quick manual tests
-int main(void) {
-    // int a;
-    // char s[64];
-    // char ch;
-    // int n = my_scanf("%d %s %c", &a, s, &ch);
-    // printf("n=%d a=%d s=%s ch=%c\n", n, a, s, ch);
 
-    // // tests char 
-    // char ch;
-    // printf("Enter a character: ");
-    // my_scanf("%c", &ch);
-    // printf("ch=%c\n", ch);
+/* -----------------------------
+Automated testing code
+----------------------------- */
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
-    // // tests string
-    // char word[100];
-    // printf("Enter a word: ");
-    // int n = my_scanf("%s", word);
-    // printf("n=%d word=\"%s\"\n", n, word);
+/* forward declaration */
+int my_scanf(const char *fmt, ...);
 
-    // // tests integer
-    // int num;      
-    // printf("Enter an integer: ");
-    // int n = my_scanf("%d", &num);
-    // printf("n=%d num=%d\n", n, num);
+/* ---------- tiny test framework ---------- */
+static int tests_run = 0;
+static int tests_failed = 0;
 
-    // // tests hex
-    // int x;
-    // printf("Enter a hex number: ");
-    // int n = my_scanf("%x", &x);
-    // printf("n=%d x=%d (decimal)\n", n, x);
+#define CHECK_INT(msg, got, exp) do { \
+    tests_run++; \
+    if ((got) != (exp)) { \
+        tests_failed++; \
+        printf("FAIL: %s | got=%d exp=%d\n", (msg), (got), (exp)); \
+    } else { \
+        printf("PASS: %s\n", (msg)); \
+    } \
+} while (0)
 
-    // // test width modifier with %s
-    // char str[10];
-    // printf("Enter a word (width 4 chars): ");
-    // int n = my_scanf("%4s", str);
-    // printf("n=%d str=\"%s\"\n", n, str);
+#define CHECK_UINT(msg, got, exp) do { \
+    tests_run++; \
+    if ((got) != (exp)) { \
+        tests_failed++; \
+        printf("FAIL: %s | got=%u exp=%u\n", (msg), (unsigned)(got), (unsigned)(exp)); \
+    } else { \
+        printf("PASS: %s\n", (msg)); \
+    } \
+} while (0)
 
-    // // test width modifier with %x
-    // int x;
-    // printf("Enter hex: ");
-    // int n = my_scanf("%2x", &x);
-    // printf("n=%d x=%d\n", n, x);
+#define CHECK_STR(msg, got, exp) do { \
+    tests_run++; \
+    if (strcmp((got), (exp)) != 0) { \
+        tests_failed++; \
+        printf("FAIL: %s | got=\"%s\" exp=\"%s\"\n", (msg), (got), (exp)); \
+    } else { \
+        printf("PASS: %s\n", (msg)); \
+    } \
+} while (0)
 
-    // // %d with length modifiers
-    // int a;
-    // long b;
-    // long long c;
-
-    // printf("Enter three integers (int, long, long long): ");
-    // my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
-    // printf("a=%d b=%ld c=%lld\n", a, b, c);
-
-    // // %f with length modifiers
-    // float a;
-    // double b;
-    // long double c;
-    // printf("Enter three numbers (float double longdouble): ");  
-    // int n = my_scanf("%Lf %lf %f", &a, &b, &c); // 1.25 3e2 -0.0045
-    // printf("n=%d\n", n);
-    // printf("a=%f\n", a);
-    // printf("b=%lf\n", b);
-    // printf("c=%Lf\n", c);
-
-    // float a = -1.0f;
-    // double b = -1.0;
-    // long double c = 9999.0L;
-    // printf("sizeof(long double)=%zu\n", sizeof(long double));
-    // int n = my_scanf("%f %lf %Lf", &a, &b, &c);
-    // printf("n=%d a=%f b=%lf c=%Lf\n", n, a, b, c);
-
-    // // test %Lf
-    // long double c = 123.0L;
-    // printf("Enter a long double: ");
-    // int n = my_scanf("%Lf", &c);
-    // printf("sizeof(long double)=%zu\n", sizeof(long double));
-    // printf("n=%d c=%.12Lf\n", n, c);
-
-    // // test %q
-    // char s[64];
-    // printf("Enter quoted text: ");
-    // int n = my_scanf("%q", s);
-    // printf("n=%d s=[%s]\n", n, s);
-
-    // // test %q, %b, %r
-    // char q[64], r[128];
-    // unsigned int b;
-    // printf("Enter: \"quoted text\" 1011 rest of line here\n");
-    // int n = my_scanf("%q %b %r", q, &b, r);
-    // printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
-
-    // // test %*d (suppression)
-    // int x;
-    // printf("Enter: 111 222\n");
-    // int n = my_scanf("%*d %d", &x);
-    // printf("n=%d x=%d\n", n, x);  // expect n=1 x=222
-    
-    // // test %*s (suppression)
-    // char s2[64];
-    // printf("Enter: skip keep\n");
-    // int n = my_scanf("%*s %s", s2);
-    // printf("n=%d s2=[%s]\n", n, s2);
-
-    // // test %*r (suppression)
-    // char line[64];
-    // int n = my_scanf("%*r%r", line);
-    // printf("n=%d line=[%s]\n", n, line);
-
-    return 0;
+static int nearly_equal_double(double a, double b, double eps) {
+    double diff = fabs(a - b);
+    return diff <= eps;
 }
+
+#define CHECK_DBL(msg, got, exp, eps) do { \
+    tests_run++; \
+    if (!nearly_equal_double((got), (exp), (eps))) { \
+        tests_failed++; \
+        printf("FAIL: %s | got=%.12f exp=%.12f (eps=%.3g)\n", (msg), (got), (exp), (eps)); \
+    } else { \
+        printf("PASS: %s\n", (msg)); \
+    } \
+} while (0)
+
+/* Feed input into stdin using a temp file */
+static void set_stdin_to_string(const char *input) {
+    const char *fname = "my_scanf_test_input.txt";
+    FILE *f = fopen(fname, "wb");
+    if (!f) { perror("fopen temp input"); return; }
+    fputs(input, f);
+    fclose(f);
+
+    if (!freopen(fname, "rb", stdin)) {
+        perror("freopen stdin");
+    }
+}
+
+/* ---------- tests ---------- */
+
+static void test_basic_d_s_c(void) {
+    set_stdin_to_string("42 hello Z");
+    int a = 0; char s[64] = {0}; char ch = '\0';
+    int n = my_scanf("%d %s %c", &a, s, &ch);
+    CHECK_INT("basic: n", n, 3);
+    CHECK_INT("basic: a", a, 42);
+    CHECK_STR("basic: s", s, "hello");
+    CHECK_INT("basic: ch", (int)ch, (int)'Z');
+}
+
+static void test_width_s(void) {
+    set_stdin_to_string("abcdef");
+    char s[10] = {0};
+    int n = my_scanf("%4s", s);
+    CHECK_INT("width %4s: n", n, 1);
+    CHECK_STR("width %4s: s", s, "abcd");
+}
+
+static void test_x_partial_and_leftover(void) {
+    set_stdin_to_string("3x");
+    unsigned int x = 0; char ch = '\0';
+    int n = my_scanf("%x%c", &x, &ch);
+    CHECK_INT("%x stops at non-hex: n", n, 2);
+    CHECK_UINT("%x stops at non-hex: x", x, 3u);
+    CHECK_INT("%x leaves leftover for %c", (int)ch, (int)'x');
+}
+
+static void test_width_x(void) {
+    set_stdin_to_string("ABCD");
+    unsigned int x = 0; char ch = '\0';
+    int n = my_scanf("%2x%c", &x, &ch);
+    CHECK_INT("width %2x + leftover %c: n", n, 2);
+    CHECK_UINT("width %2x reads 0xAB", x, 0xABu);
+    CHECK_INT("leftover after %2x is 'C'", (int)ch, (int)'C');
+}
+
+static void test_suppression(void) {
+    set_stdin_to_string("111 222");
+    int x = 0;
+    int n = my_scanf("%*d %d", &x);
+    CHECK_INT("suppression %*d %d: n", n, 1);
+    CHECK_INT("suppression %*d %d: x", x, 222);
+
+    set_stdin_to_string("skip keep");
+    char s[32] = {0};
+    n = my_scanf("%*s %s", s);
+    CHECK_INT("suppression %*s %s: n", n, 1);
+    CHECK_STR("suppression %*s %s: s", s, "keep");
+}
+
+static void test_length_modifiers_d(void) {
+    set_stdin_to_string("10 20 30");
+    int a = 0; long b = 0; long long c = 0;
+    int n = my_scanf("%d %ld %lld", &a, &b, &c);
+    CHECK_INT("length %d %ld %lld: n", n, 3);
+    CHECK_INT("length int", a, 10);
+    CHECK_INT("length long (as int compare)", (int)b, 20);
+    CHECK_INT("length long long (as int compare)", (int)c, 30);
+}
+
+static void test_f_float_double_longdouble(void) {
+    set_stdin_to_string("1.2 3e2 1.2");
+    float a = 0.0f;
+    double b = 0.0;
+    long double c = 9999.0L;
+
+    int n = my_scanf("%f %lf %Lf", &a, &b, &c);
+    CHECK_INT("float/double/longdouble: n", n, 3);
+
+    CHECK_DBL("float a", (double)a, 1.2, 1e-6);
+    CHECK_DBL("double b", b, 300.0, 1e-9);
+
+    /* don't trust %Lf printing on your setup; verify by casting */
+    CHECK_DBL("long double c (cast to double)", (double)c, 1.2, 1e-9);
+}
+
+static void test_custom_q_b_r(void) {
+    /* %q with quotes */
+    set_stdin_to_string("\"hello world\" 1011 rest of line\n");
+    char q[64] = {0};
+    unsigned int b = 0;
+    char r[128] = {0};
+
+    int n = my_scanf("%q %b %r", q, &b, r);
+    CHECK_INT("custom %q %b %r: n", n, 3);
+    CHECK_STR("custom %q", q, "hello world");
+    CHECK_UINT("custom %b (1011)", b, 11u);
+    CHECK_STR("custom %r", r, " rest of line"); /* note: includes leading space */
+
+    /* %*r%r (skip a line then read next line) */
+    set_stdin_to_string("first line to skip\nsecond line to read\n");
+    char line[64] = {0};
+    n = my_scanf("%*r%r", line);
+    CHECK_INT("%*r%r: n", n, 1);
+    CHECK_STR("%*r%r reads second line", line, "second line to read");
+}
+
+int main(void) {
+    printf("Running my_scanf tests...\n\n");
+
+    test_basic_d_s_c();
+    test_width_s();
+    test_x_partial_and_leftover();
+    test_width_x();
+    test_suppression();
+    test_length_modifiers_d();
+    test_f_float_double_longdouble();
+    test_custom_q_b_r();
+
+    printf("\n---\nTests run: %d\nFailures:  %d\n", tests_run, tests_failed);
+    return (tests_failed == 0) ? 0 : 1;
+}
+
+
+
+// // quick manual tests
+// int main(void) {
+//     // int a;
+//     // char s[64];
+//     // char ch;
+//     // int n = my_scanf("%d %s %c", &a, s, &ch);
+//     // printf("n=%d a=%d s=%s ch=%c\n", n, a, s, ch);
+
+//     // // tests char 
+//     // char ch;
+//     // printf("Enter a character: ");
+//     // my_scanf("%c", &ch);
+//     // printf("ch=%c\n", ch);
+
+//     // // tests string
+//     // char word[100];
+//     // printf("Enter a word: ");
+//     // int n = my_scanf("%s", word);
+//     // printf("n=%d word=\"%s\"\n", n, word);
+
+//     // // tests integer
+//     // int num;      
+//     // printf("Enter an integer: ");
+//     // int n = my_scanf("%d", &num);
+//     // printf("n=%d num=%d\n", n, num);
+
+//     // // tests hex
+//     // int x;
+//     // printf("Enter a hex number: ");
+//     // int n = my_scanf("%x", &x);
+//     // printf("n=%d x=%d (decimal)\n", n, x);
+
+//     // // test width modifier with %s
+//     // char str[10];
+//     // printf("Enter a word (width 4 chars): ");
+//     // int n = my_scanf("%4s", str);
+//     // printf("n=%d str=\"%s\"\n", n, str);
+
+//     // // test width modifier with %x
+//     // int x;
+//     // printf("Enter hex: ");
+//     // int n = my_scanf("%2x", &x);
+//     // printf("n=%d x=%d\n", n, x);
+
+//     // // %d with length modifiers
+//     // int a;
+//     // long b;
+//     // long long c;
+
+//     // printf("Enter three integers (int, long, long long): ");
+//     // my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
+//     // printf("a=%d b=%ld c=%lld\n", a, b, c);
+
+//     // // %f with length modifiers
+//     // float a;
+//     // double b;
+//     // long double c;
+//     // printf("Enter three numbers (float double longdouble): ");  
+//     // int n = my_scanf("%Lf %lf %f", &a, &b, &c); // 1.25 3e2 -0.0045
+//     // printf("n=%d\n", n);
+//     // printf("a=%f\n", a);
+//     // printf("b=%lf\n", b);
+//     // printf("c=%Lf\n", c);
+
+//     // float a = -1.0f;
+//     // double b = -1.0;
+//     // long double c = 9999.0L;
+//     // printf("sizeof(long double)=%zu\n", sizeof(long double));
+//     // int n = my_scanf("%f %lf %Lf", &a, &b, &c);
+//     // printf("n=%d a=%f b=%lf c=%Lf\n", n, a, b, c);
+
+//     // // test %Lf
+//     // long double c = 123.0L;
+//     // printf("Enter a long double: ");
+//     // int n = my_scanf("%Lf", &c);
+//     // printf("sizeof(long double)=%zu\n", sizeof(long double));
+//     // printf("n=%d c=%.12Lf\n", n, c);
+
+//     // // test %q
+//     // char s[64];
+//     // printf("Enter quoted text: ");
+//     // int n = my_scanf("%q", s);
+//     // printf("n=%d s=[%s]\n", n, s);
+
+//     // // test %q, %b, %r
+//     // char q[64], r[128];
+//     // unsigned int b;
+//     // printf("Enter: \"quoted text\" 1011 rest of line here\n");
+//     // int n = my_scanf("%q %b %r", q, &b, r);
+//     // printf("n=%d\nq=[%s]\nb=%u\nr=[%s]\n", n, q, b, r);
+
+//     // // test %*d (suppression)
+//     // int x;
+//     // printf("Enter: 111 222\n");
+//     // int n = my_scanf("%*d %d", &x);
+//     // printf("n=%d x=%d\n", n, x);  // expect n=1 x=222
+    
+//     // // test %*s (suppression)
+//     // char s2[64];
+//     // printf("Enter: skip keep\n");
+//     // int n = my_scanf("%*s %s", s2);
+//     // printf("n=%d s2=[%s]\n", n, s2);
+
+//     // // test %*r (suppression)
+//     // char line[64];
+//     // int n = my_scanf("%*r%r", line);
+//     // printf("n=%d line=[%s]\n", n, line);
+
+//     return 0;
+
+    
+// }
 
