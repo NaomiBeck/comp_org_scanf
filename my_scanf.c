@@ -347,7 +347,6 @@ static long double pow10_ld(int exp) {
     return p;
 }
 
-//static int scan_f(const Spec *sp, va_list *ap) {
 static int scan_f(const Spec *sp, void *outp) {
     skip_input_ws();
 
@@ -432,7 +431,10 @@ static int scan_f(const Spec *sp, void *outp) {
         }
     }
 
-    UNRDC(c);
+    // Only unread if it is NOT whitespace (and not EOF)
+    if (c != EOF && !isspace((unsigned char)c)) {
+        UNRDC(c);
+    }
 
 
     if (sp->suppress) {
@@ -440,21 +442,6 @@ static int scan_f(const Spec *sp, void *outp) {
     }
 
     val *= (long double)sign;
-
-    // if (sp->len == LEN_NONE) {          // %f
-    //     float *out = va_arg(*ap, float*);
-    //     *out = (float)val;
-    // } else if (sp->len == LEN_L) {      // %lf
-    //     double *out = va_arg(*ap, double*);
-    //     *out = (double)val;
-    // } else if (sp->len == LEN_CAP_L) {  // %Lf
-    //     long double *out = va_arg(*ap, long double*);
-    //     *out = (long double)val;
-    // } else {
-    //     #undef READC
-    //     #undef UNRDC
-    //     return 0; // (h / ll not supported for %f)
-    // }
 
     if (sp->len == LEN_NONE) {          // %f
         *(float*)outp = (float)val;
@@ -609,9 +596,6 @@ static int scan_r(const Spec *sp, va_list *ap) {
 
 
 
-
-
-
 /* -----------------------------
 my_scanf: dispatcher
 Returns number of successful assignments.
@@ -712,11 +696,11 @@ int main(void) {
     // int n = my_scanf("%d", &num);
     // printf("n=%d num=%d\n", n, num);
 
-    // tests hex
-    int x;
-    printf("Enter a hex number: ");
-    int n = my_scanf("%x", &x);
-    printf("n=%d x=%d (decimal)\n", n, x);
+    // // tests hex
+    // int x;
+    // printf("Enter a hex number: ");
+    // int n = my_scanf("%x", &x);
+    // printf("n=%d x=%d (decimal)\n", n, x);
 
     // // test width modifier with %s
     // char str[10];
@@ -739,19 +723,23 @@ int main(void) {
     // my_scanf("%d %ld %lld", &a, &b, &c);  // 10 20 30
     // printf("a=%d b=%ld c=%lld\n", a, b, c);
 
-
     // // %f with length modifiers
     // float a;
     // double b;
     // long double c;
-
     // printf("Enter three numbers (float double longdouble): ");  
-    // int n = my_scanf("%f %lf %Lf", &a, &b, &c); // 1.25 3e2 -0.0045
-
+    // int n = my_scanf("%Lf %lf %f", &a, &b, &c); // 1.25 3e2 -0.0045
     // printf("n=%d\n", n);
     // printf("a=%f\n", a);
     // printf("b=%lf\n", b);
-    // printf("c=%Lf\n", c);-0
+    // printf("c=%Lf\n", c);
+
+    // float a = -1.0f;
+    // double b = -1.0;
+    // long double c = 9999.0L;
+    // printf("sizeof(long double)=%zu\n", sizeof(long double));
+    // int n = my_scanf("%f %lf %Lf", &a, &b, &c);
+    // printf("n=%d a=%f b=%lf c=%Lf\n", n, a, b, c);
 
     // // test %Lf
     // long double c = 123.0L;
@@ -789,8 +777,6 @@ int main(void) {
     // char line[64];
     // int n = my_scanf("%*r%r", line);
     // printf("n=%d line=[%s]\n", n, line);
-
-
 
     return 0;
 }
