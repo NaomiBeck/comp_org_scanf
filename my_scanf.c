@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdarg.h>  // for variadic fucntions: va_list, va_start
 #include <ctype.h>  // for isspace()...
-#include "my_scanf.h"
 
 /* -----------------------------
 Spec struct and parse_spec
@@ -310,6 +309,12 @@ static int scan_x(const Spec *sp, va_list *ap) {
         c = nextch();
         if (c == EOF) break;
         used++;
+    }
+
+    // If we stopped because of a non-hex char, put it back for the next conversion
+    if (c != EOF && hex_value(c) < 0) {
+        unreadch(c);
+        used--;
     }
 
     if (sp->suppress) return 1;   
@@ -674,14 +679,13 @@ return assigned;
 /* -----------------------------
 Automated testing code
 ----------------------------- */
-#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
-/* forward declaration */
-int my_scanf(const char *fmt, ...);
+static void reset_unread_buffer(void) {
+    ubuf_len = 0;
+}
 
-/* ---------- tiny test framework ---------- */
 static int tests_run = 0;
 static int tests_failed = 0;
 
@@ -764,6 +768,7 @@ static void test_width_s(void) {
 }
 
 static void test_x_partial_and_leftover(void) {
+    reset_unread_buffer();
     set_stdin_to_string("3x");
     unsigned int x = 0; char ch = '\0';
     int n = my_scanf("%x%c", &x, &ch);
@@ -832,7 +837,7 @@ static void test_custom_q_b_r(void) {
     CHECK_INT("custom %q %b %r: n", n, 3);
     CHECK_STR("custom %q", q, "hello world");
     CHECK_UINT("custom %b (1011)", b, 11u);
-    CHECK_STR("custom %r", r, " rest of line"); /* note: includes leading space */
+    CHECK_STR("custom %r", r, "rest of line"); 
 
     /* %*r%r (skip a line then read next line) */
     set_stdin_to_string("first line to skip\nsecond line to read\n");
