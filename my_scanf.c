@@ -214,7 +214,7 @@ static int scan_d(const Spec *sp, va_list *ap) {
     if (c != EOF && !(limit != 0 && used >= limit)) unreadch(c);
 
     if (sp->suppress) {
-    return 1;   // input was valid and consumed
+    return 1;   
     }
 
     long signed_value = sign * value;
@@ -559,7 +559,7 @@ static int scan_b(const Spec *sp, va_list *ap) {
     if (c != EOF && !(c == '0' || c == '1')) unreadch(c);
 
     if (sp->suppress) {
-        return 1;   // input was valid and consumed
+        return 1;   
     }
 
     // store like %x using len
@@ -642,7 +642,6 @@ while (*p) {
             case 's': ok = scan_s(&sp, &ap); break;
             case 'd': ok = scan_d(&sp, &ap); break;
             case 'x': ok = scan_x(&sp, &ap); break;
-            //case 'f': ok = scan_f(&sp, &ap); break;
             case 'f': {
                 void *dst;
                 if (sp.len == LEN_NONE) dst = va_arg(ap, float*);
