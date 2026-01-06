@@ -18,14 +18,13 @@ typedef enum {
 
 typedef struct {
     int width;      // 0 means “no width specified”
-    Length len;     // h, l, ll, L
-    char conv;      // 'd','s','c','x','f'
+    Length len;     // hh, h, l, ll, L
+    char conv;      // 'd','s','c','x','f'; plus extensions q b r
     int suppress;   // 0 = normal, 1 = assignment suppression via '*'
 
 } Spec;
 
 static int parse_spec(const char **pp, Spec *out) {
-// static int parse_spec(const char **pp, Spec *out) {
     const char *p = *pp;
 
     out->width = 0;
@@ -110,7 +109,7 @@ while ((c = nextch()) != EOF) {
    Conversions: scan_c scan_s scan_d scan_x scan_f
    ============================= */
 
-// Read one character from input and store it in the variable the user passed in
+// %c: reads 1 character (or width characters); does not skip whitespace; not null-terminated
 static int scan_c(const Spec *sp, va_list *ap) {
     int n = (sp->width == 0) ? 1 : sp->width;
 
@@ -123,9 +122,7 @@ static int scan_c(const Spec *sp, va_list *ap) {
         if (!sp->suppress) out[i] = (char)c;
     }
 
-    // Standard scanf("%Nc") does NOT null-terminate.
     return 1;
-    
 }
 
 
@@ -472,6 +469,7 @@ static int scan_f(const Spec *sp, void *outp) {
    Extensions: scan_q scan_b scan_r
    ============================= */
 
+// %q: reads a quoted string (text inside double quotes), or behaves like %s if not quote
 static int scan_q(const Spec *sp, va_list *ap) {
     char *out = NULL;
     if (!sp->suppress) out = va_arg(*ap, char*);
@@ -536,6 +534,8 @@ static int scan_q(const Spec *sp, va_list *ap) {
     return 0;
 }
 
+
+// %b: reads a binary integer (base 2), similar to %x for hex
 static int scan_b(const Spec *sp, va_list *ap) {
     skip_input_ws();
 
@@ -579,6 +579,7 @@ static int scan_b(const Spec *sp, va_list *ap) {
 }
 
 
+// %r: reads the remainder of the current line (until newline), excluding the newline
 static int scan_r(const Spec *sp, va_list *ap) {
     char *out = NULL;
     if (!sp->suppress) out = va_arg(*ap, char*);
@@ -679,7 +680,6 @@ while (*p) {
 va_end(ap);
 return assigned;
 }
-
 
 
 /* =============================
