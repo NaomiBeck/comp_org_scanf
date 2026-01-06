@@ -3,9 +3,9 @@
 #include <stdarg.h>  // for variadic fucntions: va_list, va_start
 #include <ctype.h>  // for isspace()...
 
-/* -----------------------------
-Spec struct and parse_spec
------------------------------ */
+/* =============================
+   Parsing: Spec + parse_spec
+   ============================= */
 
 typedef enum {
     LEN_NONE,
@@ -73,9 +73,10 @@ static int parse_spec(const char **pp, Spec *out) {
 }
 
 
-/* -----------------------------
-helper functions
------------------------------ */
+/* =============================
+   Input helpers: nextch/unreadch/skip_input_ws
+   ============================= */
+
 #define UNREAD_MAX 16
 static int ubuf[UNREAD_MAX];
 static int ubuf_len = 0;
@@ -105,7 +106,9 @@ while ((c = nextch()) != EOF) {
 }
 
 
-// scan_ helper functions
+/* =============================
+   Conversions: scan_c scan_s scan_d scan_x scan_f
+   ============================= */
 
 // Read one character from input and store it in the variable the user passed in
 static int scan_c(const Spec *sp, va_list *ap) {
@@ -441,7 +444,6 @@ static int scan_f(const Spec *sp, void *outp) {
         UNRDC(c);
     }
 
-
     if (sp->suppress) {
         return 1;   
     }
@@ -465,7 +467,11 @@ static int scan_f(const Spec *sp, void *outp) {
     return 1;
 }
 
-/* custom extionsions */
+
+/* =============================
+   Extensions: scan_q scan_b scan_r
+   ============================= */
+
 static int scan_q(const Spec *sp, va_list *ap) {
     char *out = NULL;
     if (!sp->suppress) out = va_arg(*ap, char*);
@@ -600,11 +606,11 @@ static int scan_r(const Spec *sp, va_list *ap) {
 }
 
 
+/* =============================
+   my_scanf: dispatcher
+   Returns number of successful assignments.
+   ============================= */
 
-/* -----------------------------
-my_scanf: dispatcher
-Returns number of successful assignments.
------------------------------ */
 int my_scanf(const char *fmt, ...) {
 va_list ap;
 va_start(ap, fmt);
@@ -676,9 +682,9 @@ return assigned;
 
 
 
-/* -----------------------------
-Automated testing code
------------------------------ */
+/* =============================
+   Tests (RUN_TESTS)
+   ============================= */
 #include <string.h>
 #include <math.h>
 
@@ -846,6 +852,7 @@ static void test_custom_q_b_r(void) {
     CHECK_INT("%*r%r: n", n, 1);
     CHECK_STR("%*r%r reads second line", line, "second line to read");
 }
+
 
 int main(void) {
     printf("Running my_scanf tests...\n\n");
