@@ -261,23 +261,30 @@ static int scan_x(const Spec *sp, va_list *ap) {
 
     int c = nextch();
     if (c == EOF) return 0;
+    used++;
 
     // Optional 0x / 0X prefix
     if (c == '0') {
         if (limit == 0 || used < limit) {
             int c2 = nextch();
+            if (c2 == EOF) return 0;
+            used++;    
+
             if (c2 == 'x' || c2 == 'X') {
-                used += 2;  // consumed '0' and 'x'
-                if (limit != 0 && used > limit) {
-                    // prefix exceeded width: treat as failure, push back
-                    unreadch(c2);
-                    unreadch(c);
+                // we consumed "0x"; now read the first digit (if width allows)
+                if (limit != 0 && used >= limit) {
+                    // width ended exactly after 'x' → no digits allowed → fail
+                    unreadch(c2); used--;
+                    unreadch(c);  used--;
                     return 0;
                 }
+
                 c = nextch();
                 if (c == EOF) return 0;
+                used++; 
             } else {
                 unreadch(c2);
+                used--; 
             }
         }
     }
@@ -286,26 +293,26 @@ static int scan_x(const Spec *sp, va_list *ap) {
     int hv = hex_value(c);
     if (hv < 0) {
         unreadch(c);
+        used--; 
         return 0;
     }
 
     unsigned long value = 0;
 
     while (c != EOF && (hv = hex_value(c)) >= 0) {
-        if (limit != 0 && used >= limit) {
+        if (limit != 0 && used > limit) {
             unreadch(c);
+            used--;
             break;
         }
         value = value * 16 + (unsigned long)hv;
-        used++;
+        
         c = nextch();
+        if (c == EOF) break;
+        used++;
     }
 
-    if (c != EOF && hv < 0) unreadch(c);
-
-    if (sp->suppress) {
-        return 1;   // input was valid and consumed
-    }
+    if (sp->suppress) return 1;   
 
     switch (sp->len) {
         case LEN_NONE: {
@@ -705,11 +712,11 @@ int main(void) {
     // int n = my_scanf("%d", &num);
     // printf("n=%d num=%d\n", n, num);
 
-    // // tests hex
-    // int x;
-    // printf("Enter a hex number: ");
-    // int n = my_scanf("%x", &x);
-    // printf("n=%d x=%d (decimal)\n", n, x);
+    // tests hex
+    int x;
+    printf("Enter a hex number: ");
+    int n = my_scanf("%x", &x);
+    printf("n=%d x=%d (decimal)\n", n, x);
 
     // // test width modifier with %s
     // char str[10];
@@ -778,10 +785,10 @@ int main(void) {
     // int n = my_scanf("%*s %s", s2);
     // printf("n=%d s2=[%s]\n", n, s2);
 
-    // test %*r (suppression)
-    char line[64];
-    int n = my_scanf("%*r%r", line);
-    printf("n=%d line=[%s]\n", n, line);
+    // // test %*r (suppression)
+    // char line[64];
+    // int n = my_scanf("%*r%r", line);
+    // printf("n=%d line=[%s]\n", n, line);
 
 
 
